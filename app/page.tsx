@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { RefreshCw, Database, TrendingUp, Users, PhoneCall, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { DataTable } from "@/components/data-table"
+import { DataCards } from "@/components/data-cards"
 import { Empty } from "@/components/ui/empty"
 import { Spinner } from "@/components/ui/spinner"
 import { DEFAULT_CONFIG, DEFAULT_USERNAME } from "@/lib/types"
@@ -80,13 +80,34 @@ export default function DashboardPage() {
 
   const isConfigured = config.robotKey && config.robotToken
 
-  // Calculate stats
-  const stats = {
-    totalRecords: data.length,
-    answeredCalls: data.filter((d) => d.callAnswered === "Y").length,
-    hotLeads: data.filter((d) => d.postCallLeadClassification === "Hot").length,
-    followUpRequired: data.filter((d) => d.followUpRequired === "Yes").length,
-  }
+  // Calculate stats dynamically
+  const stats = useMemo(() => {
+    const total = data.length
+    let answeredCalls = 0
+    let hotLeads = 0
+    let followUpRequired = 0
+
+    data.forEach((row) => {
+      const raw = row.rawData as Record<string, string | boolean | undefined>
+      // Check for call answered (various possible keys)
+      const callAnswered = raw["callAnswered"] || raw["call_answered"]
+      if (callAnswered === "Y" || callAnswered === "Yes" || callAnswered === true) {
+        answeredCalls++
+      }
+      // Check for lead classification
+      const leadClass = raw["postCallLeadClassification"] || raw["leadClassification"] || raw["lead_classification"]
+      if (leadClass === "Hot") {
+        hotLeads++
+      }
+      // Check for follow-up required
+      const followUp = raw["followUpRequired"] || raw["follow_up_required"] || raw["followUp"]
+      if (followUp === "Yes" || followUp === "Y" || followUp === true) {
+        followUpRequired++
+      }
+    })
+
+    return { totalRecords: total, answeredCalls, hotLeads, followUpRequired }
+  }, [data])
 
   return (
     <div className="min-h-screen bg-background">
@@ -208,39 +229,29 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            {/* Data Table */}
-            <Card className="border-border/50 bg-card">
-              <CardHeader className="border-b border-border/50 pb-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-semibold">Conversation Records</CardTitle>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Detailed view of all conversation data with filtering options
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Spinner className="h-8 w-8 text-primary" />
-                    <span className="ml-3 text-sm text-muted-foreground">
-                      Fetching data from API...
-                    </span>
-                  </div>
-                ) : data.length === 0 ? (
-                  <div className="py-16">
-                    <Empty
-                      icon={Database}
-                      title="No Data Yet"
-                      description="Click the 'Fetch Data' button to load conversation data from the API."
-                    />
-                  </div>
-                ) : (
-                  <DataTable data={data} />
-                )}
-              </CardContent>
-            </Card>
+            {/* Data Cards */}
+            {loading ? (
+              <Card className="border-border/50 bg-card">
+                <CardContent className="flex items-center justify-center py-16">
+                  <Spinner className="h-8 w-8 text-primary" />
+                  <span className="ml-3 text-sm text-muted-foreground">
+                    Fetching data from API...
+                  </span>
+                </CardContent>
+              </Card>
+            ) : data.length === 0 ? (
+              <Card className="border-border/50 bg-card">
+                <CardContent className="py-16">
+                  <Empty
+                    icon={Database}
+                    title="No Data Yet"
+                    description="Click the 'Fetch Data' button to load conversation data from the API."
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <DataCards data={data} />
+            )}
           </>
         )}
       </main>

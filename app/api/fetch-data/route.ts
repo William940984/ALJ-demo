@@ -12,60 +12,17 @@ interface DetailItem {
   message_source: string
 }
 
-interface ParsedAnswer {
-  phoneNumber: string
-  vehicleWeb: string
-  gradeWeb: string
-  paymentTypeWeb: string
-  callAnswered: string
-  ifGuestBusySuitableCallbackTime: string
-  modelSelection: string
-  gradeSelection: string
-  colorPreference: {
-    first: string
-    second: string
-    third: string
-  }
-  purchaseType: string
-  budgetIfCash: string
-  financialEntityIfFinance: string
-  purchaseTimeline: string
-  confirmToCreateOrder: string
-  accessories: string
-  postCallLeadClassification: string
-  followUpRequired: string
-}
-
 export interface DataRow {
   id: string
   createTime: string
-  phoneNumber: string
-  vehicleWeb: string
-  gradeWeb: string
-  paymentTypeWeb: string
-  callAnswered: string
-  ifGuestBusySuitableCallbackTime: string
-  modelSelection: string
-  gradeSelection: string
-  colorPreferenceFirst: string
-  colorPreferenceSecond: string
-  colorPreferenceThird: string
-  purchaseType: string
-  budgetIfCash: string
-  financialEntityIfFinance: string
-  purchaseTimeline: string
-  confirmToCreateOrder: string
-  accessories: string
-  postCallLeadClassification: string
-  followUpRequired: string
+  rawData: Record<string, unknown>
 }
 
-function parseAnswer(answer: string): ParsedAnswer | null {
+function parseAnswer(answer: string): Record<string, unknown> | null {
   try {
-    // Try to parse as JSON directly
     const parsed = JSON.parse(answer)
-    if (parsed && typeof parsed === "object" && "phoneNumber" in parsed) {
-      return parsed as ParsedAnswer
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>
     }
     return null
   } catch {
@@ -161,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       const details: DetailItem[] = detailData.data?.list || []
 
-      // Filter only openapi-ws messages with valid JSON answers and map to data rows
+      // Filter only openapi-ws messages with valid JSON answers
       return details
         .filter((detail) => detail.message_source === "openapi-ws")
         .map((detail, index) => {
@@ -175,27 +132,7 @@ export async function POST(request: NextRequest) {
           const row: DataRow = {
             id: `${segment.segment_code}-${index}`,
             createTime: detail.create_time,
-            phoneNumber: parsed.phoneNumber || "-",
-            vehicleWeb: parsed.vehicleWeb || "-",
-            gradeWeb: parsed.gradeWeb || "-",
-            paymentTypeWeb: parsed.paymentTypeWeb || "-",
-            callAnswered: parsed.callAnswered || "-",
-            ifGuestBusySuitableCallbackTime:
-              parsed.ifGuestBusySuitableCallbackTime || "-",
-            modelSelection: parsed.modelSelection || "-",
-            gradeSelection: parsed.gradeSelection || "-",
-            colorPreferenceFirst: parsed.colorPreference?.first || "-",
-            colorPreferenceSecond: parsed.colorPreference?.second || "-",
-            colorPreferenceThird: parsed.colorPreference?.third || "-",
-            purchaseType: parsed.purchaseType || "-",
-            budgetIfCash: parsed.budgetIfCash || "-",
-            financialEntityIfFinance: parsed.financialEntityIfFinance || "-",
-            purchaseTimeline: parsed.purchaseTimeline || "-",
-            confirmToCreateOrder: parsed.confirmToCreateOrder || "-",
-            accessories: parsed.accessories || "-",
-            postCallLeadClassification:
-              parsed.postCallLeadClassification || "-",
-            followUpRequired: parsed.followUpRequired || "-",
+            rawData: parsed,
           }
 
           return row

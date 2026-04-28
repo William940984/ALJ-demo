@@ -1,25 +1,8 @@
+// Dynamic data row - supports any JSON structure
 export interface DataRow {
   id: string
   createTime: string
-  phoneNumber: string
-  vehicleWeb: string
-  gradeWeb: string
-  paymentTypeWeb: string
-  callAnswered: string
-  ifGuestBusySuitableCallbackTime: string
-  modelSelection: string
-  gradeSelection: string
-  colorPreferenceFirst: string
-  colorPreferenceSecond: string
-  colorPreferenceThird: string
-  purchaseType: string
-  budgetIfCash: string
-  financialEntityIfFinance: string
-  purchaseTimeline: string
-  confirmToCreateOrder: string
-  accessories: string
-  postCallLeadClassification: string
-  followUpRequired: string
+  rawData: Record<string, unknown>
 }
 
 export interface ApiConfig {
@@ -34,30 +17,31 @@ export const DEFAULT_CONFIG: ApiConfig = {
 
 export const DEFAULT_USERNAME = "william.pang@dyna.ai"
 
-export interface ColumnFilter {
-  column: string
-  value: string
+// Helper to format camelCase/snake_case keys to readable labels
+export function formatKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/_/g, " ")
+    .replace(/^\s+/, "")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
 }
 
-export const COLUMN_HEADERS: Record<keyof Omit<DataRow, "id">, string> = {
-  createTime: "Create Time",
-  phoneNumber: "Phone Number",
-  vehicleWeb: "Vehicle (Web)",
-  gradeWeb: "Grade (Web)",
-  paymentTypeWeb: "Payment Type (Web)",
-  callAnswered: "Call Answered",
-  ifGuestBusySuitableCallbackTime: "Callback Time",
-  modelSelection: "Model Selection",
-  gradeSelection: "Grade Selection",
-  colorPreferenceFirst: "Color 1st",
-  colorPreferenceSecond: "Color 2nd",
-  colorPreferenceThird: "Color 3rd",
-  purchaseType: "Purchase Type",
-  budgetIfCash: "Budget (Cash)",
-  financialEntityIfFinance: "Financial Entity",
-  purchaseTimeline: "Purchase Timeline",
-  confirmToCreateOrder: "Confirm Order",
-  accessories: "Accessories",
-  postCallLeadClassification: "Lead Classification",
-  followUpRequired: "Follow-Up Required",
+// Helper to get phone number from any JSON structure
+export function extractPhoneNumber(data: Record<string, unknown>): string | null {
+  const phoneKeys = ["phoneNumber", "phone_number", "phone", "mobile", "tel", "telephone"]
+  for (const key of phoneKeys) {
+    if (data[key] && typeof data[key] === "string") {
+      return data[key] as string
+    }
+  }
+  // Check nested objects
+  for (const value of Object.values(data)) {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const nested = extractPhoneNumber(value as Record<string, unknown>)
+      if (nested) return nested
+    }
+  }
+  return null
 }
